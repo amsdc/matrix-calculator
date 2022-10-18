@@ -20,6 +20,12 @@ class MatrixEntryFrame(tk.Frame):
                 el.grid(row=i, column=j, sticky="nsew", padx=5, pady=5)
                 l.append(el)
             self._elements.append(l)
+    
+    def set_list(self, data):
+        for i in range(len(data)):
+            for j in range(len(data[i])):
+                self._elements[i][j].insert(0, str(data[i][j]))
+                self._elements[i][j]["state"] = "readonly"
 
     def get_list(self):
         r=[]

@@ -69,6 +69,10 @@ class Matrix(object):
         """Update the matrix with a new list."""
         self.rows, self.cols = matrix_rc(lst)
         self._list = lst
+        
+    @property
+    def is_square(self):
+        return self.rows == self.cols
 
     def __getitem__(self, item):
         if not isinstance(item, slice):
