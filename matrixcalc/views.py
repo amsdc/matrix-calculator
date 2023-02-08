@@ -5,9 +5,11 @@ from tkinter import filedialog
 from tkinter import simpledialog
 
 import matrices
+import tk_latex
 
 from matrixcalc.controllers import Adapter
 import matrixcalc.dialogs as dialogs
+from matrixcalc.helpers import list_to_tex
 
 class OperationListFrame(tk.Frame):
     def __init__(self, parent, *a, **kw):
@@ -41,8 +43,12 @@ class OperationListFrame(tk.Frame):
             self._data = tk.Label(self, text=da[2], anchor="e")
             self._data.grid(row=i, column=1, sticky="nsew")
             self._data.bind("<Button-3>", fn)
-            
-            self._value = tk.Label(self, text=str(da[3][:]), anchor="w")
+
+            try:
+                raise
+                self._value = tk_latex.LatexLabel(self, text="[tex] "+ list_to_tex(da[3][:]) + " [/tex]")
+            except:
+                self._value = tk.Label(self, text=str(da[3][:]), anchor="w")
             self._value.grid(row=i, column=2, sticky="nsew")
             self._value.bind("<Button-3>", fn)
             i += 1
@@ -56,17 +62,21 @@ class OperationListFrame(tk.Frame):
         
         # Math operations
         math_menu = tk.Menu(tearoff=0)
-        math_menu.add_command(label="Determinant", state=self._get_state_matrix(data[3]))
-        math_menu.add_command(label="Adjoint", command=lambda: self.matdialog(matrices.adjoint(data[3])), state=self._get_state_matrix(data[3]))
+        math_menu.add_command(label="Determinant", state=self._get_state_matrix(data[3]), command=lambda: self._op_det(data))
+        math_menu.add_command(label="Adjoint", command=lambda: self._op_adjoint(data), state=self._get_state_matrix(data[3]))
         math_menu.add_command(label="Minor", state=self._get_state_matrix(data[3]))
         math_menu.add_command(label="Cofactor", state=self._get_state_matrix(data[3]))
-        math_menu.add_command(label="Inverse", command=lambda: self.matdialog(data[3].inverse()), state=self._get_state_matrix(data[3]))
+        math_menu.add_command(label="Inverse", command=lambda: self._op_inverse(data), state=self._get_state_matrix(data[3]))
         popup.add_cascade(label="Transformations", menu=math_menu)
         
         oper_menu = tk.Menu(tearoff=0)
         oper_menu.add_command(label="Scalar Multiplication")
         oper_menu.add_command(label="Pre Multiply")
         oper_menu.add_command(label="Post Multiply")
+        pwr_menu = tk.Menu(tearoff=0)
+        pwr_menu.add_command(label="Square", command=lambda: self._op_power2(data))
+        pwr_menu.add_command(label="Power N", command=lambda: self._op_powern(data))
+        oper_menu.add_cascade(label="Powers", menu=pwr_menu)
         popup.add_cascade(label="Operations", menu=oper_menu)
         
         return popup
@@ -89,12 +99,33 @@ class OperationListFrame(tk.Frame):
 
         return do_popup
 
-    def matdialog(self, lst):
-        m, n = lst.rows, lst.cols
+    def _op_det(self, data):
+        det = matrices.Matrix([[matrices.determinant(data[3])]])
+        self.matdialog(det, f"Result of Determinant of '{data[2]}'")
+    
+    def _op_inverse(self, data):
+        inv = data[3].inverse()
+        self.matdialog(inv, f"Result of Inverse of '{data[2]}'")
+
+    def _op_power2(self, data):
+        inv = data[3]*data[3]
+        self.matdialog(inv, f"Result of Power2 of '{data[2]}'")
+
+    def _op_powern(self, data):
+        times = simpledialog.askinteger("Times", "Power of")
+        inv = data[3]
+        for i in range(times-1):
+            inv = inv * data[3]
+        self.matdialog(inv, f"Result of Power{times} of '{data[2]}'")
+    
+    def _op_adjoint(self, data):
+        inv = matrices.adjoint(data[3])
+        self.matdialog(inv, f"Result of Adjoint of '{data[2]}'")
+
+    def matdialog(self, lst, title):
         self._displayframe.destroy()
-        self._displayframe = dialogs.MatrixEntryFrame(self, m, n)
-        self._displayframe.grid(row=1, column=0, columnspan=3, sticky="nsew")
-        self._displayframe.set_list(lst[:])
+        self._displayframe = dialogs.MatrixDisplayFrame(self, data=lst, title=title, adapter=self._parent.adapter, refresh=self._parent.refresh, borderwidth=1, relief="solid")
+        self._displayframe.grid(row=1, column=0, columnspan=3, sticky="nsew", padx=2, pady=2)
 
 class MainWindow(tk.Tk):
     def __init__(self, *a, **kw):
@@ -106,6 +137,7 @@ class MainWindow(tk.Tk):
             fname = filedialog.askopenfilename(filetypes=[("Matrices Workbook Files", "*.matrixpandit")])
         else:
             fname = filedialog.asksaveasfilename(filetypes=[("Matrices Workbook Files", "*.matrixpandit")], defaultextension=".matrixpandit")
+            print(repr(fname))
         self.adapter = Adapter(fname)
         
         self.title(f"Matrix Pandit - {fname}")
